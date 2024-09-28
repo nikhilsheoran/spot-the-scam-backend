@@ -12,3 +12,5 @@ tensorflow
 beautifulsoup4
 pyppeteer
 boto3
+gunicorn
+os

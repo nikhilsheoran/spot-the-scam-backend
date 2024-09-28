@@ -19,6 +19,7 @@ from urllib.parse import urlencode
 from urllib.request import urlretrieve
 import uuid
 import boto3
+import os
 
 # Import feature extraction functions
 from feature import *
@@ -201,10 +202,10 @@ def analyze():
         return jsonify({"error": "URL is required"}), 400
     
 
-    s3_access_key_id = "AKIAZFVNOOFMQBDSRGMR"
-    s3_secret_key = "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"
-    s3_bucket = "spot-the-scam"
-    s3_region = "us-east-1"  
+    s3_access_key_id = os.getenv("s3_access_key_id")
+    s3_secret_key = os.getenv("s3_secret_key")
+    s3_bucket = os.getenv("s3_bucket")
+    s3_region = os.getenv("s3_region")
 
 
 
