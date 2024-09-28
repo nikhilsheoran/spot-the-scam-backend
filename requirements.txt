@@ -1,0 +1,14 @@
+Flask
+requests
+torch
+torchvision
+transformers
+Pillow
+opencv-python
+numpy
+pandas
+scikit-learn
+tensorflow
+beautifulsoup4
+pyppeteer
+boto3
