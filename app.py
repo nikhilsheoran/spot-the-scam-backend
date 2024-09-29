@@ -25,6 +25,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.exceptions import NotFittedError
 import pickle
 import re
+import csv
 
 
 # Import feature extraction functions
@@ -62,12 +63,34 @@ def get_prediction(url, model_path):
     prediction = keras_model.predict(url_features_array)
     return round(prediction[0][0] * 100, 3), url_features
 
+def read_fraud_numbers(csv_filename):
+    fraud_numbers = set()
+    with open(csv_filename, mode='r', newline='') as file:
+        reader = csv.DictReader(file)
+        for row in reader:
+            # Concatenate country code and number if available
+            if row['countrycode']:
+                fraud_number = f"+{row['countrycode']}{row['idnumber']}"
+            else:
+                fraud_number = row['idnumber']
+            
+            # Normalize the number by removing non-digit characters
+            cleaned_fraud_number = re.sub(r'\D', '', fraud_number)
+            fraud_numbers.add(cleaned_fraud_number)
+    return fraud_numbers
+
 def contact_details_score(url):
     extracted_numbers = extract_phone_numbers(url)
+    fraud_numbers_set = read_fraud_numbers('contact_details.csv')
+
     if extracted_numbers:
-        return 100
+        for number in extracted_numbers:
+            cleaned_extracted_number = re.sub(r'\D', '', number)
+            if cleaned_extracted_number in fraud_numbers_set:
+                return 0, extracted_numbers
+        return 100, extracted_numbers
     else:
-        return 0
+        return 40, extracted_numbers
 
 def extract_phone_numbers(url, timeout=30):
     try:
@@ -252,10 +275,11 @@ def analyze_image(image_path):
 
 def calculate_overall_score(scores):
     weights = {
-        'ssl_score': 0.18,
-        'url_score': 0.24,
-        'content_score': 0.29,
-        'image_score': 0.29
+        'ssl_score': 0.16,
+        'url_score': 0.22,
+        'content_score': 0.27,
+        'image_score': 0.27,
+        'contactdetails_score': 0.08
     }
     overall_score = sum(score * weights[key] for key, score in scores.items())
     return overall_score
@@ -459,13 +483,15 @@ def analyze_website_endpoint(url):
     model_path = r"./model/Malicious_URL_Prediction.h5"
     url_score, url_features = get_prediction(url, model_path)
     content_score, text_analysis = analyze_content(url)
+    contactdetails_score , contactdetails = contact_details_score(url)
     image_score, image_analysis = analyze_image("screenshots/screenshot.jpeg")
 
     scores = {
         'ssl_score': ssl_score,
         'url_score': 100 - url_score,
         'content_score': content_score,
-        'image_score': image_score
+        'image_score': image_score,
+        'contactdetails_score': contactdetails_score
     }
 
     overall_score = calculate_overall_score(scores)
@@ -477,7 +503,7 @@ def analyze_website_endpoint(url):
             "websiteScreenshot": f"https://spot-the-scam.s3.amazonaws.com/{unique_key}",
             "domainDetails": url_features,
             "sslDetails": ssl_score > 50,
-            "contactDetails": "",
+            "contactDetails": contactdetails,
             "content": ""
         },
         "outputParameters": {
@@ -497,7 +523,7 @@ def analyze_website_endpoint(url):
                 "reason": text_analysis[0]
             },
             "contactDetailsScore": {
-                "score": 90,
+                "score": contactdetails_score,
                 "heading": "Contact Details Score",
                 "reason": "A high score indicates the presence of contact details, which enhances the website's credibility."
             },
