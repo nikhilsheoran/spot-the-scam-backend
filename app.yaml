@@ -1,0 +1,13 @@
+runtime: python39
+
+entrypoint: python main.py
+
+handlers:
+- url: /.*
+  script: auto
+
+env_variables:
+  S3_ACCESS_KEY_ID: "AKIAZFVNOOFMQBDSRGMR"
+  S3_SECRET_KEY: "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"
+  S3_BUCKET: "spot-the-scam"
+  S3_REGION: "us-east-1"

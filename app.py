@@ -38,10 +38,9 @@ def check_ssl(url):
         return 0  # SSL invalid
 
 def get_prediction(url, model_path):
-    model = keras.models.load_model(model_path)
     url_features = extract_features(url)
     url_features_array = np.array([url_features])
-    prediction = model.predict(url_features_array)
+    prediction = keras_model.predict(url_features_array)
     return round(prediction[0][0] * 100, 3), url_features
 
 def analyze_content(url):
@@ -323,6 +322,8 @@ if __name__ == '__main__':
     nlp_model = DistilBertForSequenceClassification.from_pretrained('distilbert-base-uncased')
     image_model = models.resnet50(pretrained=True)
     image_model.eval()
+
+    keras_model = keras.models.load_model(model_path)
 
     image_transforms = transforms.Compose([
         transforms.Resize(256),
