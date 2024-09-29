@@ -24,6 +24,8 @@ from google_play_scraper import app as play_store_app
 from sklearn.linear_model import LogisticRegression
 from sklearn.exceptions import NotFittedError
 import pickle
+import re
+
 
 # Import feature extraction functions
 from feature import *
@@ -59,6 +61,69 @@ def get_prediction(url, model_path):
     keras_model = keras.models.load_model(model_path)
     prediction = keras_model.predict(url_features_array)
     return round(prediction[0][0] * 100, 3), url_features
+
+def contact_details_score(url):
+    extracted_numbers = extract_phone_numbers(url)
+    if extracted_numbers:
+        return 100
+    else:
+        return 0
+
+def extract_phone_numbers(url, timeout=30):
+    try:
+        # Use a session to persist settings across requests
+        session = requests.Session()
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
+            'sec-ch-ua': '"Google Chrome";v="129", "Not=A?Brand";v="8", "Chromium";v="129"',
+            'sec-ch-ua-arch': '"x86"',
+            'sec-ch-ua-full-version': '"129.0.6668.60"',
+            'sec-ch-ua-full-version-list': '"Google Chrome";v="129.0.6668.60", "Not=A?Brand";v="8.0.0.0", "Chromium";v="129.0.6668.60"',
+            'sec-ch-ua-mobile': '?0',
+            'sec-ch-ua-model': '""',
+            'sec-ch-ua-platform': '"Windows"',
+            'sec-ch-ua-platform-version': '"15.0.0"',
+            'sec-fetch-dest': 'document',
+            'sec-fetch-mode': 'navigate',
+            'sec-fetch-site': 'same-origin',
+            'sec-fetch-user': '?1',
+            'upgrade-insecure-requests': '1'
+        }
+        session.headers.update(headers)
+
+        response = session.get(url, timeout=timeout)
+        response.raise_for_status()  # Raise an exception for bad status codes
+        
+        soup = BeautifulSoup(response.text, 'html.parser')
+        text_content = ' '.join(soup.stripped_strings)
+
+        # Improved phone number pattern to capture international numbers like +91-80-61561999
+        phone_pattern = re.compile(r'''
+            (?:(?:\+|00)[1-9]\d{0,3}[\s.-]?)?    # International prefix +91 or 0091
+            (?:\(?\d{1,4}\)?[\s.-]?)?            # Optional area code in parentheses or separated by dash/space
+            \d{1,4}[\s.-]?\d{1,4}[\s.-]?\d{1,9}  # Main part of the phone number (1 to 4 digits followed by optional separator)
+        ''', re.VERBOSE)
+        
+        phone_numbers = phone_pattern.findall(text_content)
+
+        # Clean up the extracted numbers and ensure uniqueness
+        filtered_numbers = set()
+        for num in phone_numbers:
+            cleaned_num = re.sub(r'\s+', ' ', num).strip()  # Clean up spaces
+            digits = ''.join(re.findall(r'\d', cleaned_num))  # Extract digits
+            if len(digits) >= 7 and not re.match(r'^(\d)\1+$', digits):  # At least 7 digits and not all same digit
+                filtered_numbers.add(cleaned_num)  # Add to set for uniqueness
+
+        return list(filtered_numbers)
+    except requests.Timeout:
+        print(f"Error: The request to {url} timed out. The server might be slow or unresponsive.")
+    except requests.RequestException as e:
+        print(f"Error: An error occurred while fetching the webpage: {e}")
+    except Exception as e:
+        print(f"Error: An unexpected error occurred: {e}")
+    
+    return []
+
 
 def analyze_content(url):
     try:
