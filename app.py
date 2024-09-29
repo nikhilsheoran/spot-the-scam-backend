@@ -87,10 +87,10 @@ def contact_details_score(url):
         for number in extracted_numbers:
             cleaned_extracted_number = re.sub(r'\D', '', number)
             if cleaned_extracted_number in fraud_numbers_set:
-                return 0, extracted_numbers
-        return 100, extracted_numbers
+                return 100, extracted_numbers
+        return 20, extracted_numbers
     else:
-        return 40, extracted_numbers
+        return 60, extracted_numbers
 
 def extract_phone_numbers(url, timeout=30):
     try:
